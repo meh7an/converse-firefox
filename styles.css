@@ -1,0 +1,666 @@
+/* Converse — Injected Styles
+   All selectors are scoped under #converse-root.
+   Tokens are read directly from claude.ai's own --bg-*, --text-*, --border-*
+   custom properties so light/dark mode is always in sync automatically. */
+
+/* ---------------------------------------------------------------------------
+   Token bridge
+   Maps claude.ai's HSL raw values (e.g. "60 2% 17%") into Converse's own
+   semantic tokens. Both light and dark are covered because claude.ai always
+   has the correct values on :root for the active theme.
+   --------------------------------------------------------------------------- */
+
+#converse-root {
+  /* Surfaces — directly from claude.ai */
+  --cv-bg-base:      hsl(var(--bg-100));
+  --cv-bg-surface:   hsl(var(--bg-000));
+  --cv-bg-hover:     hsl(var(--bg-200));
+  --cv-bg-subtle:    hsl(var(--bg-300));
+
+  /* Borders */
+  --cv-border:       hsl(var(--bg-400));
+  --cv-border-input: hsl(var(--bg-400));
+
+  /* Text */
+  --cv-text-primary:   hsl(var(--text-000));
+  --cv-text-secondary: hsl(var(--text-200));
+  --cv-text-tertiary:  hsl(var(--text-400));
+
+  /* Accent — claude.ai's clay/brand */
+  --cv-accent:         hsl(var(--accent-brand));
+  --cv-accent-hover:   hsl(var(--brand-000));
+  --cv-accent-subtle:  hsl(var(--accent-brand) / .08);
+  --cv-accent-border:  hsl(var(--accent-brand) / .25);
+
+  /* Semantic */
+  --cv-danger:         hsl(var(--danger-000));
+  --cv-danger-bg:      hsl(var(--danger-000) / .08);
+
+  /* Mark highlight — warm amber tint */
+  --cv-mark-bg:        hsl(var(--accent-brand) / .15);
+  --cv-mark-text:      hsl(var(--brand-000));
+
+  /* Human sender label */
+  --cv-human-color:    hsl(var(--accent-100));
+
+  /* Elevation */
+  --cv-shadow-lg: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.1);
+
+  /* Drawer width */
+  --cv-drawer-w: 400px;
+
+  /* Typography — exactly what claude.ai uses */
+  --cv-font:      var(--font-anthropic-sans, -apple-system, BlinkMacSystemFont,
+                  "Segoe UI", Roboto, sans-serif);
+  --cv-font-mono: var(--font-anthropic-mono, ui-monospace, monospace);
+
+  /* Radius — claude.ai's --cds-radius is .25rem; we scale up slightly */
+  --cv-radius-sm: 4px;
+  --cv-radius-md: 8px;
+  --cv-radius-lg: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Toggle button
+   --------------------------------------------------------------------------- */
+
+#converse-root #converse-toggle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2147483646;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+
+  background: var(--cv-bg-surface);
+  border: 1px solid var(--cv-border);
+  border-right: none;
+  border-radius: var(--cv-radius-md) 0 0 var(--cv-radius-md);
+  padding: 10px 7px;
+  cursor: pointer;
+  color: var(--cv-text-tertiary);
+  font-family: var(--cv-font);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  box-shadow: -2px 0 10px rgba(0,0,0,.08);
+  transition: color .15s, background .15s, right .28s cubic-bezier(.4,0,.2,1);
+  user-select: none;
+}
+
+#converse-root #converse-toggle span {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+#converse-root #converse-toggle svg {
+  transform: rotate(90deg);
+}
+
+#converse-root #converse-toggle:hover {
+  background: var(--cv-bg-hover);
+  color: var(--cv-text-primary);
+}
+
+#converse-root #converse-toggle.cv-toggle--open {
+  right: var(--cv-drawer-w);
+  color: var(--cv-accent);
+}
+
+#converse-root #converse-toggle.cv-toggle--syncing::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cv-accent);
+  flex-shrink: 0;
+  animation: cv-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cv-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: .4; transform: scale(.75); }
+}
+
+/* ---------------------------------------------------------------------------
+   Drawer
+   --------------------------------------------------------------------------- */
+
+#converse-root #converse-drawer {
+  position: fixed;
+  top: 0;
+  right: calc(-1 * var(--cv-drawer-w));
+  width: var(--cv-drawer-w);
+  height: 100dvh;
+  z-index: 2147483645;
+
+  display: flex;
+  flex-direction: column;
+  background: var(--cv-bg-base);
+  border-left: 1px solid var(--cv-border);
+  box-shadow: var(--cv-shadow-lg);
+  font-family: var(--cv-font);
+  transition: right .28s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+
+#converse-root #converse-drawer.cv-open {
+  right: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Header
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-header {
+  flex-shrink: 0;
+  padding: 14px 16px 12px;
+  background: var(--cv-bg-surface);
+  border-bottom: 1px solid var(--cv-border);
+}
+
+#converse-root .cv-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#converse-root .cv-wordmark {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--cv-text-primary);
+}
+
+#converse-root .cv-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--cv-radius-sm);
+  color: var(--cv-text-tertiary);
+  cursor: pointer;
+  transition: background .13s, color .13s;
+}
+
+#converse-root .cv-close-btn:hover {
+  background: var(--cv-bg-hover);
+  color: var(--cv-text-primary);
+}
+
+/* Search input */
+
+#converse-root .cv-search-wrap {
+  position: relative;
+}
+
+#converse-root .cv-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--cv-text-tertiary);
+  pointer-events: none;
+}
+
+#converse-root #converse-input {
+  width: 100%;
+  padding: 8px 10px 8px 32px;
+  background: var(--cv-bg-base);
+  border: 1px solid var(--cv-border-input);
+  border-radius: var(--cv-radius-md);
+  font-family: var(--cv-font);
+  font-size: 13.5px;
+  color: var(--cv-text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#converse-root #converse-input::placeholder {
+  color: var(--cv-text-tertiary);
+}
+
+#converse-root #converse-input:focus {
+  border-color: var(--cv-accent);
+  box-shadow: 0 0 0 3px var(--cv-accent-subtle);
+}
+
+/* Keyboard hint */
+
+#converse-root .cv-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--cv-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#converse-root .cv-hint kbd {
+  font-family: var(--cv-font-mono);
+  font-size: 10px;
+  color: var(--cv-text-secondary);
+  background: var(--cv-bg-subtle);
+  border: 1px solid var(--cv-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------------
+   Sort bar
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-sort-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  background: var(--cv-bg-surface);
+  border-bottom: 1px solid var(--cv-border);
+  font-size: 12px;
+  color: var(--cv-text-secondary);
+}
+
+#converse-root .cv-sort-bar label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#converse-root #converse-sort {
+  flex: 1;
+  padding: 3px 6px;
+  background: var(--cv-bg-base);
+  border: 1px solid var(--cv-border-input);
+  border-radius: var(--cv-radius-sm);
+  font-family: var(--cv-font);
+  font-size: 12px;
+  color: var(--cv-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+#converse-root #converse-sort:focus {
+  border-color: var(--cv-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Results list
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cv-border) transparent;
+}
+
+/* Result card */
+
+#converse-root .cv-result {
+  display: block;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--cv-border);
+  cursor: pointer;
+  outline: none;
+  transition: background .12s;
+  /* Strip anchor default styles */
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#converse-root .cv-result:last-child {
+  border-bottom: none;
+}
+
+#converse-root .cv-result:hover,
+#converse-root .cv-result:focus-visible {
+  background: var(--cv-bg-hover);
+}
+
+#converse-root .cv-result:visited {
+  color: inherit;
+}
+
+#converse-root .cv-result-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+#converse-root .cv-result-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--cv-text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+#converse-root .cv-result-date {
+  font-size: 11px;
+  color: var(--cv-text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#converse-root .cv-result-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--cv-accent);
+  background: var(--cv-accent-subtle);
+  border: 1px solid var(--cv-accent-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+  margin-bottom: 5px;
+}
+
+#converse-root .cv-result-sender {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 0 0 2px;
+}
+
+#converse-root .cv-result-sender--human {
+  color: var(--cv-human-color);
+}
+
+#converse-root .cv-result-sender--assistant {
+  color: var(--cv-accent);
+}
+
+#converse-root .cv-result-snippet {
+  font-size: 12.5px;
+  color: var(--cv-text-secondary);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+#converse-root .cv-result-snippet mark {
+  background: var(--cv-mark-bg);
+  color: var(--cv-mark-text);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-style: normal;
+}
+
+/* ---------------------------------------------------------------------------
+   Empty / error states
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+#converse-root .cv-empty svg {
+  color: var(--cv-text-tertiary);
+  opacity: .5;
+}
+
+#converse-root .cv-empty p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cv-text-secondary);
+  margin: 0;
+  max-width: 280px;
+}
+
+#converse-root .cv-empty strong {
+  color: var(--cv-text-primary);
+}
+
+#converse-root .cv-empty--error svg {
+  color: var(--cv-danger);
+  opacity: .7;
+}
+
+#converse-root .cv-empty--error p {
+  color: var(--cv-danger);
+}
+
+/* Loading spinner */
+
+#converse-root .cv-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+
+#converse-root .cv-spinner::after {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--cv-border);
+  border-top-color: var(--cv-accent);
+  border-radius: 50%;
+  animation: cv-spin .7s linear infinite;
+}
+
+@keyframes cv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------------------
+   Sync progress
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-progress {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  background: var(--cv-accent-subtle);
+  border-top: 1px solid var(--cv-accent-border);
+}
+
+#converse-root .cv-progress-track {
+  height: 3px;
+  background: var(--cv-accent-border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+#converse-root .cv-progress-fill {
+  height: 100%;
+  background: var(--cv-accent);
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+#converse-root .cv-progress-label {
+  font-size: 11.5px;
+  color: var(--cv-accent-hover);
+}
+
+/* ---------------------------------------------------------------------------
+   Footer
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 14px;
+  background: var(--cv-bg-surface);
+  border-top: 1px solid var(--cv-border);
+  font-size: 11px;
+  color: var(--cv-text-tertiary);
+  min-height: 34px;
+}
+
+#converse-root .cv-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#converse-root #converse-count {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#converse-root #converse-last-sync {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#converse-root .cv-sep {
+  opacity: .4;
+  flex-shrink: 0;
+}
+
+#converse-root .cv-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Sync button */
+
+#converse-root .cv-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-sm);
+  font-family: var(--cv-font);
+  font-size: 11px;
+  color: var(--cv-text-secondary);
+  cursor: pointer;
+  transition: background .13s, border-color .13s, color .13s;
+  white-space: nowrap;
+}
+
+#converse-root .cv-icon-btn:hover {
+  background: var(--cv-bg-hover);
+  border-color: var(--cv-border-input);
+  color: var(--cv-text-primary);
+}
+
+#converse-root .cv-icon-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+#converse-root .cv-icon-btn--spinning svg {
+  animation: cv-spin .8s linear infinite;
+}
+
+/* Storage dropdown */
+
+#converse-root .cv-storage-wrap {
+  position: relative;
+}
+
+#converse-root .cv-storage-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  font-family: var(--cv-font);
+  font-size: 11px;
+  color: var(--cv-text-tertiary);
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: var(--cv-radius-sm);
+  transition: background .13s, color .13s;
+}
+
+#converse-root .cv-storage-btn:hover {
+  background: var(--cv-bg-hover);
+  color: var(--cv-text-secondary);
+}
+
+#converse-root .cv-storage-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--cv-bg-surface);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  box-shadow: var(--cv-shadow-lg);
+  overflow: hidden;
+  min-width: 140px;
+  z-index: 10;
+}
+
+#converse-root .cv-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  font-family: var(--cv-font);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s;
+  color: var(--cv-text-secondary);
+}
+
+#converse-root .cv-menu-item--danger {
+  color: var(--cv-danger);
+}
+
+#converse-root .cv-menu-item--danger:hover {
+  background: var(--cv-danger-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 500px) {
+  #converse-root {
+    --cv-drawer-w: 100vw;
+  }
+
+  #converse-root #converse-toggle.cv-toggle--open {
+    right: calc(100vw - 38px);
+  }
+}

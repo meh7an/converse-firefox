@@ -1,0 +1,73 @@
+{
+  "manifest_version": 2,
+  "name": "Converse — Search for Claude",
+  "version": "1.0.0",
+  "description": "Full-text search across all your Claude conversations. Find anything, instantly.",
+  "author": "Mehran",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "converse@claude-search",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
+    }
+  },
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "https://claude.ai/*"
+  ],
+
+  "background": {
+    "scripts": ["browser-polyfill.js", "background.js"],
+    "persistent": true
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["browser-polyfill.js", "storage.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "browser_action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Converse — Search your conversations",
+    "theme_icons": [
+      {
+        "light": "icons/dark/icon16.png",
+        "dark":  "icons/light/icon16.png",
+        "size": 16
+      },
+      {
+        "light": "icons/dark/icon32.png",
+        "dark":  "icons/light/icon32.png",
+        "size": 32
+      },
+      {
+        "light": "icons/dark/icon48.png",
+        "dark":  "icons/light/icon48.png",
+        "size": 48
+      }
+    ]
+  },
+
+  "icons": {
+    "16":  "icons/icon16.png",
+    "32":  "icons/icon32.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
