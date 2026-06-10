@@ -5,13 +5,15 @@
 
 /* ---------------------------------------------------------------------------
    Token bridge
-   Maps claude.ai's HSL raw values (e.g. "60 2% 17%") into Converse's own
-   semantic tokens. Both light and dark are covered because claude.ai always
-   has the correct values on :root for the active theme.
+   Maps claude.ai's HSL raw values into Converse's own semantic tokens.
+   The main chat (claude.ai/chat) exposes --bg-*, --text-* etc.
+   Claude Design (claude.ai/design) uses a different --cds-* system — the
+   fallback block below handles that path using hardcoded values derived from
+   the body background observed on that page.
    --------------------------------------------------------------------------- */
 
 #converse-root {
-  /* Surfaces — directly from claude.ai */
+  /* Surfaces — directly from claude.ai main chat */
   --cv-bg-base:      hsl(var(--bg-100));
   --cv-bg-surface:   hsl(var(--bg-000));
   --cv-bg-hover:     hsl(var(--bg-200));
@@ -58,6 +60,43 @@
   --cv-radius-sm: 4px;
   --cv-radius-md: 8px;
   --cv-radius-lg: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Claude Design fallback (claude.ai/design/*)
+   That path uses --cds-* tokens and styled-components; --bg-000 is empty.
+   These hardcoded values match the light surface observed on that page.
+   --------------------------------------------------------------------------- */
+
+#converse-root[data-cv-fallback] {
+  --cv-bg-base:      rgb(250, 249, 245);
+  --cv-bg-surface:   rgb(252, 252, 251);
+  --cv-bg-hover:     rgb(244, 243, 238);
+  --cv-bg-subtle:    rgb(238, 237, 231);
+
+  --cv-border:       rgb(220, 219, 213);
+  --cv-border-input: rgb(210, 209, 203);
+
+  --cv-text-primary:   rgb(26, 25, 23);
+  --cv-text-secondary: rgb(64, 62, 58);
+  --cv-text-tertiary:  rgb(120, 118, 113);
+
+  /* Clay is available via --cds-clay on both paths */
+  --cv-accent:        var(--cds-clay, #d97757);
+  --cv-accent-hover:  var(--cds-clay-emphasized, #c6613f);
+  --cv-accent-subtle: rgb(217 119 87 / .08);
+  --cv-accent-border: rgb(217 119 87 / .25);
+
+  --cv-danger:    #d53b3b;
+  --cv-danger-bg: rgb(213 59 59 / .08);
+
+  --cv-mark-bg:   rgb(217 119 87 / .15);
+  --cv-mark-text: #c6613f;
+
+  --cv-human-color: #2b5fad;
+
+  --cv-font:      var(--cds-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  --cv-font-mono: var(--cds-font-mono, ui-monospace, monospace);
 }
 
 /* ---------------------------------------------------------------------------
@@ -309,6 +348,8 @@
   padding: 6px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--cv-border) transparent;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Result card */
@@ -422,25 +463,53 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 48px 24px;
+  padding: 40px 28px;
   text-align: center;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 #converse-root .cv-empty svg {
   color: var(--cv-text-tertiary);
-  opacity: .5;
+  opacity: .4;
 }
 
 #converse-root .cv-empty p {
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 13.5px;
+  line-height: 1.65;
   color: var(--cv-text-secondary);
-  margin: 0;
+  margin: 0 0 8px;
   max-width: 280px;
 }
 
 #converse-root .cv-empty strong {
   color: var(--cv-text-primary);
+}
+
+#converse-root .cv-feature-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+#converse-root .cv-feature-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--cv-bg-surface);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  font-size: 12.5px;
+  color: var(--cv-text-secondary);
+  text-align: left;
+}
+
+#converse-root .cv-feature-tile svg {
+  flex-shrink: 0;
+  color: var(--cv-accent);
 }
 
 #converse-root .cv-empty--error svg {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Converse — Search for Claude",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Full-text search across all your Claude conversations. Find anything, instantly.",
   "author": "Mehran",
 
