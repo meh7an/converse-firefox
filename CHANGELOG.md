@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.1.0 — 2026-06-24
+
+### Added
+
+- **Paste to File** — pastes above a configurable character threshold are automatically
+  uploaded as `.txt` file attachments instead of raw text; Claude reads the file directly
+- **`Ctrl`+`Shift`+`V`** — bypass Paste to File at any time and paste normally
+- **Inline settings panel** — gear icon in the drawer footer opens a settings panel inside
+  the drawer itself; no separate page needed
+- **Sort toggle pill** — compact Relevance / Recent toggle in the hint row below the search
+  input; replaces the previous hidden sort dropdown that only appeared after a search
+
+### Fixed
+
+- Search results showing "0 matches" — `_matchingMessages` now scans attachment extracted
+  content in addition to message body and content blocks, matching the same surfaces as the
+  full-text index; results that only match via the conversation title no longer show a zero
+  count
+- Paste to File listener stacking — calling `initPasteToFile()` on every settings save
+  previously registered a new paste listener each time; now a single listener is registered
+  once for the content script lifetime and reads config from a shared variable
+
+---
+
 ## v1.0.1 — 2026-06-11
 
 Minor visual fixes.
