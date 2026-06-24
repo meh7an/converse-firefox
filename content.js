@@ -139,19 +139,7 @@
           </div>
           <div class="cv-hint">
             <span class="cv-hint-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd> to toggle</span>
-            <button class="cv-sort-toggle" id="converse-sort-toggle" aria-label="Sort by relevance" data-sort="relevance">
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
-                   fill="none" stroke="currentColor" stroke-width="2.2"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="8" y1="6" x2="21" y2="6"/>
-                <line x1="8" y1="12" x2="21" y2="12"/>
-                <line x1="8" y1="18" x2="21" y2="18"/>
-                <line x1="3" y1="6" x2="3.01" y2="6"/>
-                <line x1="3" y1="12" x2="3.01" y2="12"/>
-                <line x1="3" y1="18" x2="3.01" y2="18"/>
-              </svg>
-              Relevance
-            </button>
+            <button class="cv-sort-toggle" id="converse-sort-toggle" aria-label="Sort by relevance" data-sort="relevance"></button>
           </div>
         </div>
 
@@ -275,12 +263,14 @@
 
     // Claude Design (claude.ai/design/*) uses a different CSS token system.
     // When --bg-000 is absent, activate the fallback token block.
-    const hasChatTokens = getComputedStyle(document.documentElement)
-      .getPropertyValue("--bg-000")
-      .trim()
-      .length > 0;
+    const hasChatTokens =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--bg-000")
+        .trim().length > 0;
     if (!hasChatTokens) {
-      document.getElementById("converse-root").setAttribute("data-cv-fallback", "");
+      document
+        .getElementById("converse-root")
+        .setAttribute("data-cv-fallback", "");
     }
 
     refreshFooter();
@@ -302,11 +292,63 @@
   // Events
   // ---------------------------------------------------------------------------
 
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function makeSortSvg(isRelevance) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", "11");
+    svg.setAttribute("height", "11");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2.2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+
+    if (isRelevance) {
+      [
+        ["8", "6", "21", "6"],
+        ["8", "12", "21", "12"],
+        ["8", "18", "21", "18"],
+        ["3", "6", "3.01", "6"],
+        ["3", "12", "3.01", "12"],
+        ["3", "18", "3.01", "18"],
+      ].forEach(([x1, y1, x2, y2]) => {
+        const l = document.createElementNS(SVG_NS, "line");
+        l.setAttribute("x1", x1);
+        l.setAttribute("y1", y1);
+        l.setAttribute("x2", x2);
+        l.setAttribute("y2", y2);
+        svg.appendChild(l);
+      });
+    } else {
+      const c = document.createElementNS(SVG_NS, "circle");
+      c.setAttribute("cx", "12");
+      c.setAttribute("cy", "12");
+      c.setAttribute("r", "10");
+      svg.appendChild(c);
+      const p = document.createElementNS(SVG_NS, "polyline");
+      p.setAttribute("points", "12 6 12 12 16 14");
+      svg.appendChild(p);
+    }
+    return svg;
+  }
+
+  function setSortToggleContent(btn, sort) {
+    const isRelevance = sort === "relevance";
+    btn.replaceChildren(
+      makeSortSvg(isRelevance),
+      document.createTextNode(isRelevance ? " Relevance" : " Recent"),
+    );
+  }
+
   function bindEvents() {
     const toggle = document.getElementById("converse-toggle");
     const closeBtn = document.getElementById("converse-close");
     const input = document.getElementById("converse-input");
     const sortToggleBtn = document.getElementById("converse-sort-toggle");
+    setSortToggleContent(sortToggleBtn, currentSort);
     const syncBtn = document.getElementById("converse-sync-btn");
     const storageBtn = document.getElementById("converse-storage-btn");
     const storageMenu = document.getElementById("converse-storage-menu");
@@ -322,10 +364,11 @@
       const next = currentSort === "relevance" ? "modified-desc" : "relevance";
       currentSort = next;
       sortToggleBtn.dataset.sort = next;
-      sortToggleBtn.setAttribute("aria-label", next === "relevance" ? "Sort by relevance" : "Sort by recent");
-      sortToggleBtn.innerHTML = next === "relevance"
-        ? `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Relevance`
-        : `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Recent`;
+      sortToggleBtn.setAttribute(
+        "aria-label",
+        next === "relevance" ? "Sort by relevance" : "Sort by recent",
+      );
+      setSortToggleContent(sortToggleBtn, next);
       if (currentQuery.trim()) runSearch(currentQuery);
     });
 
@@ -333,9 +376,11 @@
       if (!isSyncing) syncConversations();
     });
 
-    document.getElementById("converse-settings-btn").addEventListener("click", () => {
-      toggleSettingsPanel();
-    });
+    document
+      .getElementById("converse-settings-btn")
+      .addEventListener("click", () => {
+        toggleSettingsPanel();
+      });
 
     storageBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -348,7 +393,12 @@
 
     clearBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (!confirm("Clear all indexed conversations? You will need to sync again.")) return;
+      if (
+        !confirm(
+          "Clear all indexed conversations? You will need to sync again.",
+        )
+      )
+        return;
       await window.converseStorage.clearAll();
       footerCache = null;
       storageMenu.hidden = true;
@@ -417,7 +467,9 @@
     if (query !== currentQuery) return;
 
     try {
-      const results = await window.converseStorage.search(query, { sortBy: currentSort });
+      const results = await window.converseStorage.search(query, {
+        sortBy: currentSort,
+      });
       if (query !== currentQuery) return;
 
       if (results.length === 0) {
@@ -437,7 +489,10 @@
 
   function renderResults(results, query) {
     const container = document.getElementById("converse-results");
-    const terms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 0);
+    const terms = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
 
     // Using <a> instead of <div> gives us middle-click, right-click context menu,
     // and drag-safe behaviour for free — the browser won't fire click after a drag
@@ -468,9 +523,10 @@
         }
 
         // Only show the match badge when there is a real count to show.
-        const badge = r.matchCount > 0
-          ? `<span class="cv-result-badge">${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}</span>`
-          : "";
+        const badge =
+          r.matchCount > 0
+            ? `<span class="cv-result-badge">${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}</span>`
+            : "";
 
         return `
           <a class="cv-result"
@@ -488,7 +544,10 @@
       })
       .join("");
 
-    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+    const doc = new DOMParser().parseFromString(
+      `<div>${html}</div>`,
+      "text/html",
+    );
     container.replaceChildren(...doc.body.firstChild.childNodes);
   }
 
@@ -567,7 +626,7 @@
 
     const parsed = new DOMParser().parseFromString(
       `<div>${templates[state] ?? templates.initial}</div>`,
-      "text/html"
+      "text/html",
     );
     container.replaceChildren(...parsed.body.firstChild.childNodes);
   }
@@ -606,12 +665,12 @@
       fill.style.width = "5%";
 
       const list = await fetchWithRetry(
-        `https://claude.ai/api/organizations/${orgId}/chat_conversations`
+        `https://claude.ai/api/organizations/${orgId}/chat_conversations`,
       );
 
       const existing = await window.converseStorage.getTimestamps();
       const toFetch = list.filter(
-        (c) => !existing[c.uuid] || existing[c.uuid] !== c.updated_at
+        (c) => !existing[c.uuid] || existing[c.uuid] !== c.updated_at,
       );
 
       if (toFetch.length === 0) {
@@ -629,12 +688,12 @@
               batch.map(async (conv) => {
                 try {
                   return await fetchWithRetry(
-                    `https://claude.ai/api/organizations/${orgId}/chat_conversations/${conv.uuid}?tree=True&rendering_mode=messages&render_all_tools=true`
+                    `https://claude.ai/api/organizations/${orgId}/chat_conversations/${conv.uuid}?tree=True&rendering_mode=messages&render_all_tools=true`,
                   );
                 } catch {
                   return null;
                 }
-              })
+              }),
             )
           ).filter(Boolean);
 
@@ -645,11 +704,15 @@
           fill.style.width = `${pct}%`;
           label.textContent = `Syncing ${done} of ${toFetch.length}…`;
 
-          if (i + CONFIG.batchSize < toFetch.length) await sleep(CONFIG.batchDelayMs);
+          if (i + CONFIG.batchSize < toFetch.length)
+            await sleep(CONFIG.batchDelayMs);
         }
       }
 
-      await window.converseStorage.setMetadata("lastSyncTime", new Date().toISOString());
+      await window.converseStorage.setMetadata(
+        "lastSyncTime",
+        new Date().toISOString(),
+      );
       label.textContent = "Sync complete.";
       fill.style.width = "100%";
       await sleep(1400);
@@ -698,7 +761,11 @@
         : "never synced";
       const sizeText = formatBytes(bytes);
 
-      footerCache = { count: countText, lastSync: lastSyncText, size: sizeText };
+      footerCache = {
+        count: countText,
+        lastSync: lastSyncText,
+        size: sizeText,
+      };
 
       countEl.textContent = countText;
       lastSyncEl.textContent = lastSyncText;
@@ -733,7 +800,9 @@
     isSettingsOpen = true;
     document.getElementById("converse-settings-panel").hidden = false;
     document.getElementById("converse-results").hidden = true;
-    document.getElementById("converse-settings-btn").setAttribute("aria-pressed", "true");
+    document
+      .getElementById("converse-settings-btn")
+      .setAttribute("aria-pressed", "true");
     initSettingsPanel();
   }
 
@@ -741,24 +810,29 @@
     isSettingsOpen = false;
     document.getElementById("converse-settings-panel").hidden = true;
     document.getElementById("converse-results").hidden = false;
-    document.getElementById("converse-settings-btn").setAttribute("aria-pressed", "false");
+    document
+      .getElementById("converse-settings-btn")
+      .setAttribute("aria-pressed", "false");
   }
 
   function initSettingsPanel() {
-    const enabledEl   = document.getElementById("ptf-enabled");
+    const enabledEl = document.getElementById("ptf-enabled");
     const thresholdEl = document.getElementById("ptf-threshold");
     const thresholdRow = document.getElementById("ptf-threshold-row");
-    const savedEl     = document.getElementById("cv-settings-saved");
+    const savedEl = document.getElementById("cv-settings-saved");
 
     // Load current values from storage.
-    browser.storage.sync.get(PTF_DEFAULTS).then((config) => {
-      enabledEl.checked    = config.pasteToFileEnabled;
-      thresholdEl.value    = config.pasteThresholdChars;
-      syncThresholdRow(config.pasteToFileEnabled);
-    }).catch(() => {
-      enabledEl.checked  = PTF_DEFAULTS.pasteToFileEnabled;
-      thresholdEl.value  = PTF_DEFAULTS.pasteThresholdChars;
-    });
+    browser.storage.sync
+      .get(PTF_DEFAULTS)
+      .then((config) => {
+        enabledEl.checked = config.pasteToFileEnabled;
+        thresholdEl.value = config.pasteThresholdChars;
+        syncThresholdRow(config.pasteToFileEnabled);
+      })
+      .catch(() => {
+        enabledEl.checked = PTF_DEFAULTS.pasteToFileEnabled;
+        thresholdEl.value = PTF_DEFAULTS.pasteThresholdChars;
+      });
 
     // Avoid stacking listeners on repeated opens.
     if (enabledEl.dataset.bound) return;
@@ -772,16 +846,27 @@
     };
 
     const saveSettings = () => {
-      const threshold = Math.min(100000, Math.max(100, parseInt(thresholdEl.value, 10) || 500));
+      const threshold = Math.min(
+        100000,
+        Math.max(100, parseInt(thresholdEl.value, 10) || 500),
+      );
       thresholdEl.value = threshold;
-      const config = { pasteToFileEnabled: enabledEl.checked, pasteThresholdChars: threshold };
-      browser.storage.sync.set(config).then(() => {
-        savedEl.textContent = "Saved";
-        clearTimeout(saveSettings._t);
-        saveSettings._t = setTimeout(() => { savedEl.textContent = ""; }, 1500);
-        // Re-arm the paste listener with updated config.
-        initPasteToFile();
-      }).catch(() => {});
+      const config = {
+        pasteToFileEnabled: enabledEl.checked,
+        pasteThresholdChars: threshold,
+      };
+      browser.storage.sync
+        .set(config)
+        .then(() => {
+          savedEl.textContent = "Saved";
+          clearTimeout(saveSettings._t);
+          saveSettings._t = setTimeout(() => {
+            savedEl.textContent = "";
+          }, 1500);
+          // Re-arm the paste listener with updated config.
+          initPasteToFile();
+        })
+        .catch(() => {});
     };
 
     enabledEl.addEventListener("change", () => {
@@ -825,11 +910,15 @@
     document.addEventListener("paste", onPaste, true);
 
     // Ctrl+Shift+V — set bypass flag so the next paste event is let through.
-    document.addEventListener("keydown", (e) => {
-      if (e.ctrlKey && e.shiftKey && e.key === "V") {
-        ptfBypassNext = true;
-      }
-    }, true);
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key === "V") {
+          ptfBypassNext = true;
+        }
+      },
+      true,
+    );
   }
 
   function onPaste(event) {
@@ -858,8 +947,13 @@
   }
 
   function buildPasteFile(text) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    return new File([text], "paste-" + timestamp + ".txt", { type: "text/plain" });
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    return new File([text], "paste-" + timestamp + ".txt", {
+      type: "text/plain",
+    });
   }
 
   /**
@@ -904,7 +998,14 @@
     host.id = PTF_TOAST_ID;
 
     const shadow = host.attachShadow({ mode: "closed" });
-    shadow.innerHTML = ptfToastTemplate(label);
+    const parsed = new DOMParser().parseFromString(
+      ptfToastTemplate(label),
+      "text/html",
+    );
+    shadow.append(
+      ...Array.from(parsed.head.childNodes),
+      ...Array.from(parsed.body.childNodes),
+    );
     document.body.appendChild(host);
 
     const toast = shadow.querySelector(".ptf-toast");
@@ -917,7 +1018,9 @@
     const dismiss = () => {
       if (!host.isConnected) return;
       toast.classList.remove("ptf-toast--visible");
-      toast.addEventListener("transitionend", () => host.remove(), { once: true });
+      toast.addEventListener("transitionend", () => host.remove(), {
+        once: true,
+      });
       clearTimeout(timer);
     };
 
@@ -928,7 +1031,9 @@
 
     shadow.querySelector(".ptf-close").addEventListener("click", dismiss);
 
-    const arm = () => { timer = setTimeout(dismiss, autoDismissMs); };
+    const arm = () => {
+      timer = setTimeout(dismiss, autoDismissMs);
+    };
     toast.addEventListener("mouseenter", () => clearTimeout(timer));
     toast.addEventListener("mouseleave", arm);
     arm();
