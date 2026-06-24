@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Converse — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div id="converse-root">
+      <div class="cv-opts-shell">
+
+        <!-- Sidebar -->
+        <nav class="cv-opts-nav">
+          <div class="cv-opts-wordmark">Converse</div>
+          <ul class="cv-opts-nav-list">
+            <li>
+              <a class="cv-opts-nav-item cv-opts-nav-item--active" href="#paste-to-file">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Paste to File
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Main content -->
+        <main class="cv-opts-main">
+          <header class="cv-opts-page-header">
+            <h1 class="cv-opts-page-title">Settings</h1>
+            <span class="cv-opts-saved" id="cv-saved-badge" aria-live="polite"></span>
+          </header>
+
+          <!-- Paste to File section -->
+          <section class="cv-opts-section" id="paste-to-file">
+            <div class="cv-opts-section-header">
+              <h2 class="cv-opts-section-title">Paste to File</h2>
+              <p class="cv-opts-section-desc">
+                When you paste a large block of text into Claude, Converse can automatically
+                upload it as a <code>.txt</code> file attachment instead. Claude can read
+                the file directly — no need to re-paste or regenerate content.
+              </p>
+            </div>
+
+            <div class="cv-opts-card">
+
+              <!-- Enable toggle -->
+              <div class="cv-opts-row">
+                <div class="cv-opts-row-label">
+                  <span class="cv-opts-label">Enable paste to file</span>
+                  <span class="cv-opts-hint">Intercepts pastes above the threshold and uploads them as a file</span>
+                </div>
+                <label class="cv-opts-toggle" aria-label="Enable paste to file">
+                  <input type="checkbox" id="ptf-enabled" />
+                  <span class="cv-opts-toggle-track">
+                    <span class="cv-opts-toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
+
+              <div class="cv-opts-divider"></div>
+
+              <!-- Threshold -->
+              <div class="cv-opts-row cv-opts-row--field" id="ptf-threshold-row">
+                <div class="cv-opts-row-label">
+                  <label class="cv-opts-label" for="ptf-threshold">Character threshold</label>
+                  <span class="cv-opts-hint">Pastes longer than this many characters will be converted to a file</span>
+                </div>
+                <div class="cv-opts-field-wrap">
+                  <input
+                    type="number"
+                    id="ptf-threshold"
+                    class="cv-opts-input"
+                    min="100"
+                    max="100000"
+                    step="100"
+                    placeholder="500"
+                  />
+                  <span class="cv-opts-field-unit">chars</span>
+                </div>
+              </div>
+
+              <div class="cv-opts-divider"></div>
+
+              <!-- Behaviour note -->
+              <div class="cv-opts-row cv-opts-row--info">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" class="cv-opts-info-icon" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p class="cv-opts-info-text">
+                  If the file upload cannot be triggered automatically, a
+                  <strong>"Upload as file"</strong> button will appear near the Claude input.
+                  Files are named <code>paste-YYYY-MM-DDTHH-MM-SS.txt</code>.
+                </p>
+              </div>
+
+            </div>
+          </section>
+        </main>
+
+      </div>
+    </div>
+
+    <script src="browser-polyfill.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

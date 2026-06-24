@@ -1,0 +1,438 @@
+/* Converse — Options Page Styles
+   Seeds the --cv-* token system for the standalone options page.
+   The injected content.js can read tokens from claude.ai's live CSS vars,
+   but here we're in our own page so we hardcode the same values used in
+   the #converse-root[data-cv-fallback] block of styles.css. */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #f5f4f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Token seed — mirrors #converse-root[data-cv-fallback] in styles.css
+   --------------------------------------------------------------------------- */
+
+#converse-root {
+  --cv-bg-base:      rgb(250, 249, 245);
+  --cv-bg-surface:   rgb(252, 252, 251);
+  --cv-bg-hover:     rgb(244, 243, 238);
+  --cv-bg-subtle:    rgb(238, 237, 231);
+
+  --cv-border:       rgb(220, 219, 213);
+  --cv-border-input: rgb(210, 209, 203);
+
+  --cv-text-primary:   rgb(26, 25, 23);
+  --cv-text-secondary: rgb(64, 62, 58);
+  --cv-text-tertiary:  rgb(120, 118, 113);
+
+  --cv-accent:        #d97757;
+  --cv-accent-hover:  #c6613f;
+  --cv-accent-subtle: rgb(217 119 87 / .08);
+  --cv-accent-border: rgb(217 119 87 / .25);
+
+  --cv-danger:    #d53b3b;
+  --cv-danger-bg: rgb(213 59 59 / .08);
+
+  --cv-font:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cv-font-mono: ui-monospace, "Cascadia Code", "Fira Mono", monospace;
+
+  --cv-radius-sm: 4px;
+  --cv-radius-md: 8px;
+  --cv-radius-lg: 12px;
+
+  --cv-shadow-lg: 0 8px 32px rgba(0,0,0,.1), 0 2px 8px rgba(0,0,0,.06);
+
+  min-height: 100%;
+  font-family: var(--cv-font);
+  color: var(--cv-text-primary);
+  background: var(--cv-bg-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode — auto-flips tokens when OS/Firefox is in dark mode
+   --------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  #converse-root {
+    --cv-bg-base:      rgb(28, 27, 25);
+    --cv-bg-surface:   rgb(35, 34, 31);
+    --cv-bg-hover:     rgb(42, 41, 38);
+    --cv-bg-subtle:    rgb(22, 21, 19);
+
+    --cv-border:       rgb(55, 54, 50);
+    --cv-border-input: rgb(65, 64, 60);
+
+    --cv-text-primary:   rgb(242, 241, 237);
+    --cv-text-secondary: rgb(190, 188, 183);
+    --cv-text-tertiary:  rgb(120, 118, 113);
+
+    --cv-accent:        #e0845f;
+    --cv-accent-hover:  #d97757;
+    --cv-accent-subtle: rgb(217 119 87 / .12);
+    --cv-accent-border: rgb(217 119 87 / .3);
+
+    --cv-shadow-lg: 0 8px 32px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.2);
+  }
+
+  body {
+    background: rgb(18, 17, 15);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Layout shell
+   --------------------------------------------------------------------------- */
+
+.cv-opts-shell {
+  display: flex;
+  min-height: 100vh;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar nav
+   --------------------------------------------------------------------------- */
+
+.cv-opts-nav {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 32px 16px;
+  border-right: 1px solid var(--cv-border);
+  background: var(--cv-bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.cv-opts-wordmark {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--cv-text-primary);
+  padding: 0 8px;
+}
+
+.cv-opts-nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cv-opts-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: var(--cv-radius-md);
+  font-size: 13px;
+  color: var(--cv-text-secondary);
+  text-decoration: none;
+  transition: background .13s, color .13s;
+  cursor: pointer;
+}
+
+.cv-opts-nav-item:hover {
+  background: var(--cv-bg-hover);
+  color: var(--cv-text-primary);
+}
+
+.cv-opts-nav-item--active {
+  background: var(--cv-accent-subtle);
+  color: var(--cv-accent);
+  font-weight: 500;
+}
+
+.cv-opts-nav-item--active:hover {
+  background: var(--cv-accent-subtle);
+  color: var(--cv-accent-hover);
+}
+
+/* ---------------------------------------------------------------------------
+   Main content area
+   --------------------------------------------------------------------------- */
+
+.cv-opts-main {
+  flex: 1;
+  padding: 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+.cv-opts-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--cv-border);
+}
+
+.cv-opts-page-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--cv-text-primary);
+}
+
+.cv-opts-saved {
+  font-size: 12px;
+  color: var(--cv-accent);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  white-space: nowrap;
+}
+
+.cv-opts-saved--visible {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Section
+   --------------------------------------------------------------------------- */
+
+.cv-opts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cv-opts-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cv-opts-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cv-text-primary);
+  letter-spacing: -.01em;
+}
+
+.cv-opts-section-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cv-text-secondary);
+  max-width: 520px;
+}
+
+.cv-opts-section-desc code {
+  font-family: var(--cv-font-mono);
+  font-size: 12px;
+  background: var(--cv-bg-subtle);
+  border: 1px solid var(--cv-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--cv-text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+   Card
+   --------------------------------------------------------------------------- */
+
+.cv-opts-card {
+  background: var(--cv-bg-surface);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-lg);
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Row
+   --------------------------------------------------------------------------- */
+
+.cv-opts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 20px;
+}
+
+.cv-opts-row--field {
+  align-items: flex-start;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.cv-opts-row--info {
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--cv-bg-subtle);
+  padding: 14px 20px;
+}
+
+.cv-opts-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cv-opts-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--cv-text-primary);
+}
+
+.cv-opts-hint {
+  font-size: 12px;
+  color: var(--cv-text-tertiary);
+  line-height: 1.5;
+}
+
+.cv-opts-divider {
+  height: 1px;
+  background: var(--cv-border);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Toggle switch — matches Converse drawer aesthetic
+   --------------------------------------------------------------------------- */
+
+.cv-opts-toggle {
+  flex-shrink: 0;
+  cursor: pointer;
+  display: block;
+}
+
+.cv-opts-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.cv-opts-toggle-track {
+  display: flex;
+  align-items: center;
+  width: 38px;
+  height: 22px;
+  background: var(--cv-border);
+  border-radius: 11px;
+  padding: 2px;
+  transition: background 160ms ease;
+  position: relative;
+}
+
+.cv-opts-toggle input:checked ~ .cv-opts-toggle-track {
+  background: var(--cv-accent);
+}
+
+.cv-opts-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform 160ms ease;
+  flex-shrink: 0;
+}
+
+.cv-opts-toggle input:checked ~ .cv-opts-toggle-track .cv-opts-toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* Disabled state dims the whole row */
+.cv-opts-row--disabled {
+  opacity: .45;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Number input + unit
+   --------------------------------------------------------------------------- */
+
+.cv-opts-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cv-opts-input {
+  width: 96px;
+  padding: 7px 10px;
+  background: var(--cv-bg-base);
+  border: 1px solid var(--cv-border-input);
+  border-radius: var(--cv-radius-md);
+  font-family: var(--cv-font);
+  font-size: 13px;
+  color: var(--cv-text-primary);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+  text-align: right;
+}
+
+.cv-opts-input::placeholder {
+  color: var(--cv-text-tertiary);
+}
+
+.cv-opts-input:focus {
+  border-color: var(--cv-accent);
+  box-shadow: 0 0 0 3px var(--cv-accent-subtle);
+}
+
+.cv-opts-input:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.cv-opts-field-unit {
+  font-size: 12px;
+  color: var(--cv-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Info row
+   --------------------------------------------------------------------------- */
+
+.cv-opts-info-icon {
+  flex-shrink: 0;
+  color: var(--cv-text-tertiary);
+  margin-top: 1px;
+}
+
+.cv-opts-info-text {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--cv-text-secondary);
+}
+
+.cv-opts-info-text strong {
+  color: var(--cv-text-primary);
+  font-weight: 500;
+}
+
+.cv-opts-info-text code {
+  font-family: var(--cv-font-mono);
+  font-size: 11.5px;
+  background: var(--cv-bg-base);
+  border: 1px solid var(--cv-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--cv-text-primary);
+}

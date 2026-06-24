@@ -30,6 +30,17 @@
   let currentSort = "relevance";
 
   // ---------------------------------------------------------------------------
+  // Paste-to-File — constants
+  // ---------------------------------------------------------------------------
+
+  const PTF_TOAST_ID = "converse-ptf-toast";
+
+  const PTF_DEFAULTS = {
+    pasteToFileEnabled: false,
+    pasteThresholdChars: 500,
+  };
+
+  // ---------------------------------------------------------------------------
   // IndexedDB availability check (Firefox blocks it in Private Browsing)
   // ---------------------------------------------------------------------------
 
@@ -184,6 +195,23 @@
           </div>
         </div>
 
+          <div class="cv-settings-panel" id="converse-settings-panel" hidden>
+            <div class="cv-settings-inner">
+              <p class="cv-settings-title">Paste to File</p>
+              <p class="cv-settings-desc">Pastes longer than the threshold are uploaded as a <code>.txt</code> attachment instead of raw text.</p>
+              <div class="cv-settings-row">
+                <span class="cv-settings-label">Enable</span>
+                <label class="cv-tog" aria-label="Enable paste to file"><input type="checkbox" id="ptf-enabled" /><span class="cv-tog-track"><span class="cv-tog-thumb"></span></span></label>
+              </div>
+              <div class="cv-settings-row" id="ptf-threshold-row">
+                <label class="cv-settings-label" for="ptf-threshold">Threshold</label>
+                <div class="cv-settings-field"><input type="number" id="ptf-threshold" class="cv-settings-input" min="100" max="100000" step="100" placeholder="500" /><span class="cv-settings-unit">chars</span></div>
+              </div>
+              <p class="cv-settings-saved" id="cv-settings-saved"></p>
+            </div>
+          </div>
+        </div>
+
         <div class="cv-progress" id="converse-progress" hidden>
           <div class="cv-progress-track">
             <div class="cv-progress-fill" id="converse-progress-fill" style="width:0%"></div>
@@ -209,6 +237,7 @@
               </svg>
               Sync
             </button>
+            <button class="cv-icon-btn cv-icon-btn--icon-only" id="converse-settings-btn" title="Settings" aria-pressed="false"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
             <div class="cv-storage-wrap" id="converse-storage-wrap">
               <button class="cv-storage-btn" id="converse-storage-btn" title="Storage options">
                 <span id="converse-storage-size">—</span>
@@ -239,6 +268,7 @@
   async function init() {
     buildDrawer();
     bindEvents();
+    initPasteToFile();
 
     // Claude Design (claude.ai/design/*) uses a different CSS token system.
     // When --bg-000 is absent, activate the fallback token block.
@@ -671,6 +701,305 @@
     const units = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(n) / Math.log(1024));
     return `${(n / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Paste-to-File
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Settings panel (inline, inside the drawer)
+  // ---------------------------------------------------------------------------
+
+  let isSettingsOpen = false;
+
+  function toggleSettingsPanel() {
+    isSettingsOpen ? closeSettingsPanel() : openSettingsPanel();
+  }
+
+  function openSettingsPanel() {
+    isSettingsOpen = true;
+    document.getElementById("converse-settings-panel").hidden = false;
+    document.getElementById("converse-results").hidden = true;
+    document.getElementById("converse-settings-btn").setAttribute("aria-pressed", "true");
+    initSettingsPanel();
+  }
+
+  function closeSettingsPanel() {
+    isSettingsOpen = false;
+    document.getElementById("converse-settings-panel").hidden = true;
+    document.getElementById("converse-results").hidden = false;
+    document.getElementById("converse-settings-btn").setAttribute("aria-pressed", "false");
+  }
+
+  function initSettingsPanel() {
+    const enabledEl   = document.getElementById("ptf-enabled");
+    const thresholdEl = document.getElementById("ptf-threshold");
+    const thresholdRow = document.getElementById("ptf-threshold-row");
+    const savedEl     = document.getElementById("cv-settings-saved");
+
+    // Load current values from storage.
+    browser.storage.sync.get(PTF_DEFAULTS).then((config) => {
+      enabledEl.checked    = config.pasteToFileEnabled;
+      thresholdEl.value    = config.pasteThresholdChars;
+      syncThresholdRow(config.pasteToFileEnabled);
+    }).catch(() => {
+      enabledEl.checked  = PTF_DEFAULTS.pasteToFileEnabled;
+      thresholdEl.value  = PTF_DEFAULTS.pasteThresholdChars;
+    });
+
+    // Avoid stacking listeners on repeated opens.
+    if (enabledEl.dataset.bound) return;
+    enabledEl.dataset.bound = "1";
+
+    let saveTimer = null;
+
+    const scheduleSave = () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveSettings, 400);
+    };
+
+    const saveSettings = () => {
+      const threshold = Math.min(100000, Math.max(100, parseInt(thresholdEl.value, 10) || 500));
+      thresholdEl.value = threshold;
+      const config = { pasteToFileEnabled: enabledEl.checked, pasteThresholdChars: threshold };
+      browser.storage.sync.set(config).then(() => {
+        savedEl.textContent = "Saved";
+        clearTimeout(saveSettings._t);
+        saveSettings._t = setTimeout(() => { savedEl.textContent = ""; }, 1500);
+        // Re-arm the paste listener with updated config.
+        initPasteToFile();
+      }).catch(() => {});
+    };
+
+    enabledEl.addEventListener("change", () => {
+      syncThresholdRow(enabledEl.checked);
+      scheduleSave();
+    });
+    thresholdEl.addEventListener("input", scheduleSave);
+    thresholdEl.addEventListener("blur", saveSettings);
+
+    function syncThresholdRow(enabled) {
+      thresholdRow.classList.toggle("cv-settings-row--disabled", !enabled);
+      thresholdEl.disabled = !enabled;
+    }
+  }
+
+  // Tracks the active paste-to-file config so the single shared listener
+  // always uses current settings without re-registering on every save.
+  let ptfConfig = null;
+  let ptfListenerActive = false;
+
+  // Set by the Ctrl+Shift+V keydown handler — consumed on the next paste event.
+  let ptfBypassNext = false;
+
+  async function initPasteToFile() {
+    let config;
+    try {
+      config = await browser.storage.sync.get(PTF_DEFAULTS);
+    } catch {
+      // storage.sync unavailable (Private Browsing) — leave feature off.
+      ptfConfig = null;
+      return;
+    }
+
+    // Always update the live config so the shared listener picks up new values.
+    ptfConfig = config.pasteToFileEnabled ? config : null;
+
+    // Register the listeners exactly once for the lifetime of the content script.
+    if (ptfListenerActive) return;
+    ptfListenerActive = true;
+
+    document.addEventListener("paste", onPaste, true);
+
+    // Ctrl+Shift+V — set bypass flag so the next paste event is let through.
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "V") {
+        ptfBypassNext = true;
+      }
+    }, true);
+  }
+
+  function onPaste(event) {
+    // Feature disabled or bypass hotkey was pressed — let paste through normally.
+    if (!ptfConfig || ptfBypassNext) {
+      ptfBypassNext = false;
+      return;
+    }
+
+    const text = event.clipboardData?.getData("text/plain") ?? "";
+    if (text.length < ptfConfig.pasteThresholdChars) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const file = buildPasteFile(text);
+
+    tryInjectFile(file).then((injected) => {
+      if (!injected) {
+        showPtfToast({
+          label: text.length.toLocaleString() + " chars — upload as file?",
+          onConfirm: () => tryInjectFile(file),
+        });
+      }
+    });
+  }
+
+  function buildPasteFile(text) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    return new File([text], "paste-" + timestamp + ".txt", { type: "text/plain" });
+  }
+
+  /**
+   * Injects a File into Claude's hidden file input via the native
+   * HTMLInputElement files setter, bypassing React's synthetic event lock.
+   * Fires a bubbling change event so React's delegated listener picks up
+   * the new FileList.
+   *
+   * @param {File} file
+   * @returns {Promise<boolean>}
+   */
+  async function tryInjectFile(file) {
+    const input = document.querySelector('input[type="file"]');
+    if (!input) return false;
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "files",
+    )?.set;
+
+    if (!nativeSetter) return false;
+
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      nativeSetter.call(input, dt.files);
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Paste-to-File — toast (Shadow DOM, isolated from claude.ai + Converse styles)
+  // ---------------------------------------------------------------------------
+
+  function showPtfToast({ label, onConfirm, autoDismissMs = 7000 }) {
+    removePtfToast();
+
+    const host = document.createElement("div");
+    host.id = PTF_TOAST_ID;
+
+    const shadow = host.attachShadow({ mode: "closed" });
+    shadow.innerHTML = ptfToastTemplate(label);
+    document.body.appendChild(host);
+
+    const toast = shadow.querySelector(".ptf-toast");
+
+    // Defer so the CSS transition fires on the freshly painted node.
+    requestAnimationFrame(() => toast.classList.add("ptf-toast--visible"));
+
+    let timer = null;
+
+    const dismiss = () => {
+      if (!host.isConnected) return;
+      toast.classList.remove("ptf-toast--visible");
+      toast.addEventListener("transitionend", () => host.remove(), { once: true });
+      clearTimeout(timer);
+    };
+
+    shadow.querySelector(".ptf-action").addEventListener("click", () => {
+      dismiss();
+      requestAnimationFrame(onConfirm);
+    });
+
+    shadow.querySelector(".ptf-close").addEventListener("click", dismiss);
+
+    const arm = () => { timer = setTimeout(dismiss, autoDismissMs); };
+    toast.addEventListener("mouseenter", () => clearTimeout(timer));
+    toast.addEventListener("mouseleave", arm);
+    arm();
+  }
+
+  function removePtfToast() {
+    document.getElementById(PTF_TOAST_ID)?.remove();
+  }
+
+  function ptfToastTemplate(label) {
+    const safeLabel = label
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+    return `
+      <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :host {
+          all: initial;
+          position: fixed;
+          inset-block-end: 24px;
+          inset-inline-end: 24px;
+          z-index: 2147483647;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .ptf-toast {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 14px;
+          border-radius: 10px;
+          background: #1e1d1b;
+          border: 1px solid rgba(255,255,255,.08);
+          max-width: 360px;
+          min-width: 240px;
+          opacity: 0;
+          transform: translateY(8px);
+          transition: opacity 180ms ease, transform 180ms ease;
+          box-shadow: 0 4px 16px rgba(0,0,0,.4), 0 1px 4px rgba(0,0,0,.2);
+        }
+        .ptf-toast--visible { opacity: 1; transform: translateY(0); }
+        .ptf-icon { font-size: 16px; flex-shrink: 0; line-height: 1; }
+        .ptf-label { flex: 1; font-size: 12.5px; color: #b5b3ae; line-height: 1.45; }
+        .ptf-action {
+          flex-shrink: 0;
+          padding: 5px 11px;
+          border: none;
+          border-radius: 6px;
+          background: #d97757;
+          color: #fff;
+          font-size: 12.5px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 120ms ease;
+        }
+        .ptf-action:hover { background: #c6613f; }
+        .ptf-action:active { background: #b5563a; }
+        .ptf-close {
+          flex-shrink: 0;
+          width: 22px;
+          height: 22px;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: #6b6a67;
+          font-size: 15px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 120ms ease, color 120ms ease;
+        }
+        .ptf-close:hover { background: rgba(255,255,255,.08); color: #b5b3ae; }
+      </style>
+      <div class="ptf-toast" role="status" aria-live="polite" aria-atomic="true">
+        <span class="ptf-icon" aria-hidden="true">\U0001F4C4</span>
+        <span class="ptf-label">${safeLabel}</span>
+        <button class="ptf-action" type="button">Upload as file</button>
+        <button class="ptf-close" type="button" aria-label="Dismiss">&#x2715;</button>
+      </div>
+    `;
   }
 
   // ---------------------------------------------------------------------------

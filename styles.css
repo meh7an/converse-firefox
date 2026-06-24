@@ -286,6 +286,13 @@
   color: var(--cv-text-tertiary);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#converse-root .cv-hint-keys {
+  display: flex;
+  align-items: center;
   gap: 2px;
 }
 
@@ -732,4 +739,186 @@
   #converse-root #converse-toggle.cv-toggle--open {
     right: calc(100vw - 38px);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Panel wrapper — holds results + settings as siblings
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-panels {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#converse-root .cv-results {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Inline settings panel
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-settings-panel {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cv-border) transparent;
+}
+
+#converse-root .cv-settings-inner {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#converse-root .cv-settings-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--cv-text-tertiary);
+}
+
+#converse-root .cv-settings-desc {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--cv-text-secondary);
+}
+
+#converse-root .cv-settings-desc code {
+  font-family: var(--cv-font-mono);
+  font-size: 11.5px;
+  background: var(--cv-bg-subtle);
+  border: 1px solid var(--cv-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: var(--cv-text-primary);
+}
+
+#converse-root .cv-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--cv-bg-surface);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  transition: opacity .15s;
+}
+
+#converse-root .cv-settings-row--disabled {
+  opacity: .45;
+  pointer-events: none;
+}
+
+#converse-root .cv-settings-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cv-text-primary);
+}
+
+/* Toggle */
+
+#converse-root .cv-tog {
+  cursor: pointer;
+  flex-shrink: 0;
+  display: block;
+}
+
+#converse-root .cv-tog input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+#converse-root .cv-tog-track {
+  display: flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  background: var(--cv-border);
+  border-radius: 10px;
+  padding: 2px;
+  transition: background 160ms ease;
+}
+
+#converse-root .cv-tog input:checked ~ .cv-tog-track {
+  background: var(--cv-accent);
+}
+
+#converse-root .cv-tog-thumb {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform 160ms ease;
+  flex-shrink: 0;
+}
+
+#converse-root .cv-tog input:checked ~ .cv-tog-track .cv-tog-thumb {
+  transform: translateX(14px);
+}
+
+/* Threshold field */
+
+#converse-root .cv-settings-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#converse-root .cv-settings-input {
+  width: 80px;
+  padding: 5px 8px;
+  background: var(--cv-bg-base);
+  border: 1px solid var(--cv-border-input);
+  border-radius: var(--cv-radius-sm);
+  font-family: var(--cv-font);
+  font-size: 12.5px;
+  color: var(--cv-text-primary);
+  outline: none;
+  text-align: right;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+#converse-root .cv-settings-input:focus {
+  border-color: var(--cv-accent);
+  box-shadow: 0 0 0 2px var(--cv-accent-subtle);
+}
+
+#converse-root .cv-settings-unit {
+  font-size: 11.5px;
+  color: var(--cv-text-tertiary);
+  white-space: nowrap;
+}
+
+#converse-root .cv-settings-saved {
+  font-size: 11.5px;
+  color: var(--cv-accent);
+  font-weight: 500;
+  min-height: 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Icon-only button variant (no text, square)
+   --------------------------------------------------------------------------- */
+
+#converse-root .cv-icon-btn--icon-only {
+  padding: 3px 6px;
+}
+
+#converse-root .cv-icon-btn--icon-only[aria-pressed="true"] {
+  background: var(--cv-accent-subtle);
+  border-color: var(--cv-accent-border);
+  color: var(--cv-accent);
 }

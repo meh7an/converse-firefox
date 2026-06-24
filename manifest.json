@@ -20,8 +20,14 @@
     "storage",
     "activeTab",
     "tabs",
+    "clipboardRead",
     "https://claude.ai/*"
   ],
+
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
 
   "background": {
     "scripts": ["browser-polyfill.js", "background.js"],
