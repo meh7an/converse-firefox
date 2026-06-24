@@ -308,41 +308,42 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Sort bar
+   Sort toggle pill (in cv-hint row)
    --------------------------------------------------------------------------- */
 
-#converse-root .cv-sort-bar {
-  flex-shrink: 0;
-  display: flex;
+#converse-root .cv-sort-toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 16px;
-  background: var(--cv-bg-surface);
-  border-bottom: 1px solid var(--cv-border);
-  font-size: 12px;
-  color: var(--cv-text-secondary);
-}
-
-#converse-root .cv-sort-bar label {
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-#converse-root #converse-sort {
-  flex: 1;
-  padding: 3px 6px;
-  background: var(--cv-bg-base);
-  border: 1px solid var(--cv-border-input);
-  border-radius: var(--cv-radius-sm);
+  gap: 4px;
+  padding: 2px 7px 2px 5px;
+  background: var(--cv-bg-subtle);
+  border: 1px solid var(--cv-border);
+  border-radius: 10px;
   font-family: var(--cv-font);
-  font-size: 12px;
-  color: var(--cv-text-primary);
-  outline: none;
+  font-size: 10.5px;
+  color: var(--cv-text-secondary);
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .13s, border-color .13s, color .13s;
+  line-height: 1.4;
 }
 
-#converse-root #converse-sort:focus {
-  border-color: var(--cv-accent);
+#converse-root .cv-sort-toggle:hover {
+  background: var(--cv-bg-hover);
+  border-color: var(--cv-border-input);
+  color: var(--cv-text-primary);
+}
+
+#converse-root .cv-sort-toggle[data-sort="modified-desc"] {
+  background: var(--cv-accent-subtle);
+  border-color: var(--cv-accent-border);
+  color: var(--cv-accent);
+}
+
+#converse-root .cv-sort-toggle[data-sort="modified-desc"]:hover {
+  background: var(--cv-accent-subtle);
+  color: var(--cv-accent-hover);
 }
 
 /* ---------------------------------------------------------------------------

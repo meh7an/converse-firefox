@@ -265,16 +265,23 @@ class ConversationStorage {
     const matches = [];
 
     for (const msg of conversation.chat_messages ?? []) {
-      let text = "";
+      // Gather all text surfaces for this message — body, content blocks,
+      // and attachment extracted text (mirrors _buildSearchText).
+      const parts = [];
+
       if (msg.text) {
-        text = msg.text;
+        parts.push(msg.text);
       } else if (Array.isArray(msg.content)) {
-        text = msg.content
-          .filter((b) => b.type === "text")
-          .map((b) => b.text)
-          .join(" ");
+        for (const b of msg.content) {
+          if (b.type === "text" && b.text) parts.push(b.text);
+        }
       }
 
+      for (const att of msg.attachments ?? []) {
+        if (att.extracted_content) parts.push(att.extracted_content);
+      }
+
+      const text = parts.join(" ");
       if (!text.trim()) continue;
 
       const lower = text.toLowerCase();
@@ -285,6 +292,20 @@ class ConversationStorage {
         snippet: this._snippet(text, terms),
         uuid: msg.uuid,
       });
+    }
+
+    // The conversation passed the full-text filter but no individual message
+    // surface matched (e.g. the term only appears in the title). Return a
+    // synthetic entry so matchCount is never 0 for a result that did match.
+    if (matches.length === 0 && conversation.name) {
+      const nameLower = conversation.name.toLowerCase();
+      if (terms.some((t) => nameLower.includes(t))) {
+        matches.push({
+          sender: null,
+          snippet: conversation.name,
+          uuid: null,
+        });
+      }
     }
 
     return matches;

@@ -137,23 +137,26 @@
               spellcheck="false"
             />
           </div>
-          <p class="cv-hint">
-            <kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd> to toggle
-          </p>
+          <div class="cv-hint">
+            <span class="cv-hint-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd> to toggle</span>
+            <button class="cv-sort-toggle" id="converse-sort-toggle" aria-label="Sort by relevance" data-sort="relevance">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              Relevance
+            </button>
+          </div>
         </div>
 
-        <div class="cv-sort-bar" id="converse-sort-bar" hidden>
-          <label for="converse-sort">Sort</label>
-          <select id="converse-sort">
-            <option value="relevance">Best match</option>
-            <option value="modified-desc">Recently edited</option>
-            <option value="modified-asc">Oldest edit</option>
-            <option value="created-desc">Newest</option>
-            <option value="created-asc">Oldest</option>
-          </select>
-        </div>
-
-        <div class="cv-results" id="converse-results" role="list">
+        <div class="cv-panels">
+          <div class="cv-results" id="converse-results" role="list">
           <div class="cv-empty" id="converse-empty-initial">
             <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
                  fill="none" stroke="currentColor" stroke-width="1.5"
@@ -303,7 +306,7 @@
     const toggle = document.getElementById("converse-toggle");
     const closeBtn = document.getElementById("converse-close");
     const input = document.getElementById("converse-input");
-    const sortSelect = document.getElementById("converse-sort");
+    const sortToggleBtn = document.getElementById("converse-sort-toggle");
     const syncBtn = document.getElementById("converse-sync-btn");
     const storageBtn = document.getElementById("converse-storage-btn");
     const storageMenu = document.getElementById("converse-storage-menu");
@@ -314,13 +317,24 @@
 
     input.addEventListener("input", (e) => onSearchInput(e.target.value));
 
-    sortSelect.addEventListener("change", (e) => {
-      currentSort = e.target.value;
+    sortToggleBtn.addEventListener("click", () => {
+      // Cycle: relevance → modified-desc → relevance
+      const next = currentSort === "relevance" ? "modified-desc" : "relevance";
+      currentSort = next;
+      sortToggleBtn.dataset.sort = next;
+      sortToggleBtn.setAttribute("aria-label", next === "relevance" ? "Sort by relevance" : "Sort by recent");
+      sortToggleBtn.innerHTML = next === "relevance"
+        ? `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Relevance`
+        : `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Recent`;
       if (currentQuery.trim()) runSearch(currentQuery);
     });
 
     syncBtn.addEventListener("click", () => {
       if (!isSyncing) syncConversations();
+    });
+
+    document.getElementById("converse-settings-btn").addEventListener("click", () => {
+      toggleSettingsPanel();
     });
 
     storageBtn.addEventListener("click", (e) => {
@@ -406,12 +420,9 @@
       const results = await window.converseStorage.search(query, { sortBy: currentSort });
       if (query !== currentQuery) return;
 
-      const sortBar = document.getElementById("converse-sort-bar");
       if (results.length === 0) {
-        sortBar.hidden = true;
         showState("no-results", { query });
       } else {
-        sortBar.hidden = false;
         renderResults(results, query);
       }
     } catch (err) {
@@ -449,13 +460,17 @@
             const re = new RegExp(`(${escapeRegExp(term)})`, "gi");
             raw = raw.replace(re, "<mark>$1</mark>");
           }
-          snippet = `
-            <p class="cv-result-sender cv-result-sender--${match.sender === "human" ? "human" : "assistant"}">
-              ${match.sender === "human" ? "You" : "Claude"}
-            </p>
-            <p class="cv-result-snippet">${raw}</p>
-          `;
+          // sender is null for synthetic title-match entries — skip the label.
+          const senderLabel = match.sender
+            ? `<p class="cv-result-sender cv-result-sender--${match.sender === "human" ? "human" : "assistant"}">${match.sender === "human" ? "You" : "Claude"}</p>`
+            : "";
+          snippet = `${senderLabel}<p class="cv-result-snippet">${raw}</p>`;
         }
+
+        // Only show the match badge when there is a real count to show.
+        const badge = r.matchCount > 0
+          ? `<span class="cv-result-badge">${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}</span>`
+          : "";
 
         return `
           <a class="cv-result"
@@ -466,7 +481,7 @@
               <span class="cv-result-title">${escapeHtml(r.name)}</span>
               <span class="cv-result-date">${date}</span>
             </div>
-            <span class="cv-result-badge">${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}</span>
+            ${badge}
             ${snippet}
           </a>
         `;
@@ -483,9 +498,6 @@
 
   function showState(state, data = {}) {
     const container = document.getElementById("converse-results");
-    const sortBar = document.getElementById("converse-sort-bar");
-
-    if (state !== "results") sortBar.hidden = true;
 
     const templates = {
       initial: `
