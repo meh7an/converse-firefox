@@ -1,8 +1,8 @@
 # Converse — Full-Text Search for Claude (Firefox)
 
-Search across the complete content of all your Claude conversations — not just titles.
-Includes a Paste to File feature that uploads large pastes as `.txt` attachments so Claude
-can read them directly without regenerating content.
+Search across the complete content of all your Claude conversations and skills — not just
+titles. Includes a Paste to File feature that uploads large pastes as `.txt` attachments so
+Claude can read them directly without regenerating content.
 
 ---
 
@@ -13,12 +13,27 @@ and lets you find anything you actually said or Claude actually replied, with hi
 snippets and direct navigation.
 
 - **Full-text search** — searches message bodies, not just titles
+- **Skills search** — toggle the drawer to search inside your skills' files
 - **Sort by relevance or recency** — toggle between best-match and most-recently-edited
 - **Incremental sync** — only fetches conversations that have changed
 - **Local-only** — all data lives in IndexedDB in your browser; nothing leaves your device
 - **Claude-native UI** — the drawer matches Claude's own design language
 - **Keyboard-first** — `Ctrl`+`Shift`+`F` to open, `Escape` to close
 - **Paste to File** — converts large pastes into file attachments automatically
+
+---
+
+## Skills search
+
+The **Chats / Skills** pill below the search input switches what the drawer searches. In
+Skills mode the query runs against the full content of every file inside each skill, not
+just its name and description.
+
+- Skills are downloaded the first time you switch to Skills mode in a session, then cached
+  locally like conversations are
+- Each skill's archive is unpacked in the browser — no external library, no server
+- Later syncs only re-download skills whose `updated_at` changed
+- The footer **Sync** button re-syncs whichever mode is active
 
 ---
 
@@ -76,6 +91,7 @@ converse-firefox/
 ├── browser-polyfill.js  Mozilla webextension-polyfill (v0.12.0)
 ├── background.js        Toolbar icon click handler
 ├── storage.js           IndexedDB layer (ConversationStorage class)
+├── skills.js            Skill archive decoding and text extraction
 ├── content.js           UI injection, search logic, and Paste to File
 ├── styles.css           Injected styles (scoped under #converse-root)
 ├── options.html         Settings page (Paste to File configuration)

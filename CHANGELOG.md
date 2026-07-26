@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.2.0 — 2026-07-26
+
+### Added
+
+- **Skills search** — a Chats / Skills toggle beside the sort pill switches the drawer
+  between searching conversations and searching skill content; the search placeholder and
+  footer counts follow the active mode
+- **Skill archive indexing** — each skill's `.skill` archive is downloaded and unpacked in
+  the browser (zip parsing and `deflate-raw` inflation, no external library), so search
+  covers every text file inside a skill, not just its name and description
+- **Lazy one-shot skills cache** — skills are fetched only the first time you switch to
+  Skills mode in a session, then cached in IndexedDB and diffed by `updated_at` on later
+  syncs; skills deleted upstream are dropped from the cache
+
+### Fixed
+
+- Silent hang on database upgrade — `indexedDB.open()` fires `onblocked` when another tab
+  holds an older version, and with no handler neither `onsuccess` nor `onerror` ever fired,
+  leaving every storage call pending forever; the request now rejects with a clear
+  "close other Claude tabs" message, and open connections yield to a newer version via
+  `onversionchange` so future upgrades never block
+
+---
+
 ## v1.1.0 — 2026-06-24
 
 ### Added

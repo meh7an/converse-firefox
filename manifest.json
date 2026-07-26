@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Converse — Search for Claude",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Full-text search across all your Claude conversations. Find anything, instantly.",
   "author": "Mehran",
 
@@ -37,7 +37,7 @@
   "content_scripts": [
     {
       "matches": ["https://claude.ai/*"],
-      "js": ["browser-polyfill.js", "storage.js", "content.js"],
+      "js": ["browser-polyfill.js", "storage.js", "skills.js", "content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
     }

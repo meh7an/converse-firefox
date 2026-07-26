@@ -308,10 +308,18 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Sort toggle pill (in cv-hint row)
+   Toggle pills — sort + search mode (in cv-hint row)
    --------------------------------------------------------------------------- */
 
-#converse-root .cv-sort-toggle {
+#converse-root .cv-hint-toggles {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+#converse-root .cv-sort-toggle,
+#converse-root .cv-mode-toggle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -329,19 +337,22 @@
   line-height: 1.4;
 }
 
-#converse-root .cv-sort-toggle:hover {
+#converse-root .cv-sort-toggle:hover,
+#converse-root .cv-mode-toggle:hover {
   background: var(--cv-bg-hover);
   border-color: var(--cv-border-input);
   color: var(--cv-text-primary);
 }
 
-#converse-root .cv-sort-toggle[data-sort="modified-desc"] {
+#converse-root .cv-sort-toggle[data-sort="modified-desc"],
+#converse-root .cv-mode-toggle[data-mode="skills"] {
   background: var(--cv-accent-subtle);
   border-color: var(--cv-accent-border);
   color: var(--cv-accent);
 }
 
-#converse-root .cv-sort-toggle[data-sort="modified-desc"]:hover {
+#converse-root .cv-sort-toggle[data-sort="modified-desc"]:hover,
+#converse-root .cv-mode-toggle[data-mode="skills"]:hover {
   background: var(--cv-accent-subtle);
   color: var(--cv-accent-hover);
 }
@@ -459,6 +470,36 @@
   border-radius: 2px;
   padding: 0 2px;
   font-style: normal;
+}
+
+/* Skill result cards — no per-skill page exists, so they are static. */
+
+#converse-root .cv-result--skill {
+  cursor: default;
+}
+
+#converse-root .cv-result-file {
+  font-family: var(--cv-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--cv-accent);
+  margin: 0 0 2px;
+  overflow-wrap: anywhere;
+}
+
+#converse-root .cv-skill-state {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--cv-border);
+  border-radius: 8px;
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--cv-text-tertiary);
+  vertical-align: 1px;
 }
 
 /* ---------------------------------------------------------------------------

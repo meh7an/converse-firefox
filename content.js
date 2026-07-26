@@ -15,6 +15,7 @@
     batchSize: 30,
     batchDelayMs: 100,
     searchDebounceMs: 280,
+    skillBatchSize: 4,
   };
 
   // ---------------------------------------------------------------------------
@@ -24,10 +25,13 @@
   let isOpen = false;
   let isSyncing = false;
   let hasSyncedThisSession = false;
+  let isSkillsSyncing = false;
+  let hasSkillsSyncedThisSession = false;
   let footerCache = null;
   let searchTimer = null;
   let currentQuery = "";
   let currentSort = "relevance";
+  let currentMode = "chats";
 
   // ---------------------------------------------------------------------------
   // Paste-to-File — constants
@@ -44,12 +48,13 @@
   // IndexedDB availability check (Firefox blocks it in Private Browsing)
   // ---------------------------------------------------------------------------
 
-  async function isStorageAvailable() {
+  // Returns null when storage is usable, otherwise the error that blocked it.
+  async function storageFailure() {
     try {
       await window.converseStorage.getConversationCount();
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err) {
+      return err;
     }
   }
 
@@ -65,7 +70,7 @@
     return null;
   }
 
-  async function fetchWithRetry(url, maxAttempts = 3, delayMs = 1000) {
+  async function fetchWithRetry(url, { as = "json", maxAttempts = 3, delayMs = 1000 } = {}) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const res = await fetch(url);
@@ -78,7 +83,7 @@
           }
           throw new Error(`HTTP ${status}`);
         }
-        return res.json();
+        return as === "buffer" ? res.arrayBuffer() : res.json();
       } catch (err) {
         if (attempt === maxAttempts) throw err;
         await sleep(delayMs);
@@ -139,7 +144,10 @@
           </div>
           <div class="cv-hint">
             <span class="cv-hint-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>F</kbd> to toggle</span>
-            <button class="cv-sort-toggle" id="converse-sort-toggle" aria-label="Sort by relevance" data-sort="relevance"></button>
+            <div class="cv-hint-toggles">
+              <button class="cv-mode-toggle" id="converse-mode-toggle" aria-label="Searching chats — switch to skills" data-mode="chats"></button>
+              <button class="cv-sort-toggle" id="converse-sort-toggle" aria-label="Sort by relevance" data-sort="relevance"></button>
+            </div>
           </div>
         </div>
 
@@ -275,12 +283,20 @@
 
     refreshFooter();
 
-    const storageOk = await isStorageAvailable();
-    if (!storageOk) {
-      showState("error", {
-        title: "Unavailable in Private Browsing",
-        body: "Firefox blocks local storage in private windows. Open a regular window to use Converse.",
-      });
+    const failure = await storageFailure();
+    if (failure) {
+      showState(
+        "error",
+        failure.name === "BlockedUpgradeError"
+          ? {
+              title: "Close other Claude tabs",
+              body: "Converse is upgrading its local index, but another claude.ai tab is still using the old one. Close or reload the other tabs, then reload this page.",
+            }
+          : {
+              title: "Unavailable in Private Browsing",
+              body: "Firefox blocks local storage in private windows. Open a regular window to use Converse.",
+            },
+      );
       return;
     }
 
@@ -343,12 +359,46 @@
     );
   }
 
+  function makeModeSvg(isChats) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", "11");
+    svg.setAttribute("height", "11");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2.2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+
+    if (isChats) {
+      const p = document.createElementNS(SVG_NS, "path");
+      p.setAttribute("d", "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z");
+      svg.appendChild(p);
+    } else {
+      const p = document.createElementNS(SVG_NS, "polygon");
+      p.setAttribute("points", "13 2 3 14 12 14 11 22 21 10 12 10 13 2");
+      svg.appendChild(p);
+    }
+    return svg;
+  }
+
+  function setModeToggleContent(btn, mode) {
+    const isChats = mode === "chats";
+    btn.replaceChildren(
+      makeModeSvg(isChats),
+      document.createTextNode(isChats ? " Chats" : " Skills"),
+    );
+  }
+
   function bindEvents() {
     const toggle = document.getElementById("converse-toggle");
     const closeBtn = document.getElementById("converse-close");
     const input = document.getElementById("converse-input");
     const sortToggleBtn = document.getElementById("converse-sort-toggle");
     setSortToggleContent(sortToggleBtn, currentSort);
+    const modeToggleBtn = document.getElementById("converse-mode-toggle");
+    setModeToggleContent(modeToggleBtn, currentMode);
     const syncBtn = document.getElementById("converse-sync-btn");
     const storageBtn = document.getElementById("converse-storage-btn");
     const storageMenu = document.getElementById("converse-storage-menu");
@@ -372,8 +422,16 @@
       if (currentQuery.trim()) runSearch(currentQuery);
     });
 
+    modeToggleBtn.addEventListener("click", toggleSearchMode);
+
+    // The footer sync button syncs whichever corpus is currently active.
     syncBtn.addEventListener("click", () => {
-      if (!isSyncing) syncConversations();
+      if (isSyncing || isSkillsSyncing) return;
+      if (currentMode === "skills") {
+        syncSkills();
+      } else {
+        syncConversations();
+      }
     });
 
     document
@@ -401,6 +459,7 @@
         return;
       await window.converseStorage.clearAll();
       footerCache = null;
+      hasSkillsSyncedThisSession = false;
       storageMenu.hidden = true;
       refreshFooter(true);
       showState("initial");
@@ -446,6 +505,40 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Search mode (chats / skills)
+  // ---------------------------------------------------------------------------
+
+  function toggleSearchMode() {
+    currentMode = currentMode === "chats" ? "skills" : "chats";
+    const isChats = currentMode === "chats";
+
+    const btn = document.getElementById("converse-mode-toggle");
+    btn.dataset.mode = currentMode;
+    btn.setAttribute(
+      "aria-label",
+      isChats ? "Searching chats — switch to skills" : "Searching skills — switch to chats",
+    );
+    setModeToggleContent(btn, currentMode);
+
+    document.getElementById("converse-input").placeholder = isChats
+      ? "Search conversations…"
+      : "Search skills…";
+
+    refreshFooter();
+
+    // Skills are cached lazily — the first switch of the session triggers the
+    // one-shot download of every skill archive.
+    if (!isChats && !hasSkillsSyncedThisSession && !isSkillsSyncing) syncSkills();
+
+    if (currentQuery.trim()) {
+      showState("loading");
+      runSearch(currentQuery);
+    } else {
+      showState("initial");
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Search
   // ---------------------------------------------------------------------------
 
@@ -465,15 +558,19 @@
 
   async function runSearch(query) {
     if (query !== currentQuery) return;
+    const mode = currentMode;
 
     try {
-      const results = await window.converseStorage.search(query, {
-        sortBy: currentSort,
-      });
-      if (query !== currentQuery) return;
+      const results =
+        mode === "skills"
+          ? await window.converseStorage.searchSkills(query, { sortBy: currentSort })
+          : await window.converseStorage.search(query, { sortBy: currentSort });
+      if (query !== currentQuery || mode !== currentMode) return;
 
       if (results.length === 0) {
         showState("no-results", { query });
+      } else if (mode === "skills") {
+        renderSkillResults(results, query);
       } else {
         renderResults(results, query);
       }
@@ -551,12 +648,76 @@
     container.replaceChildren(...doc.body.firstChild.childNodes);
   }
 
+  function renderSkillResults(results, query) {
+    const container = document.getElementById("converse-results");
+    const terms = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 0);
+
+    const html = results
+      .map((r) => {
+        const date = new Date(r.updated_at).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        const match = r.matchingFiles[0];
+        let snippet = "";
+
+        if (match) {
+          let raw = escapeHtml(match.snippet);
+          for (const term of terms) {
+            const re = new RegExp(`(${escapeRegExp(term)})`, "gi");
+            raw = raw.replace(re, "<mark>$1</mark>");
+          }
+          // path is null for synthetic name-match entries — skip the label.
+          const fileLabel = match.path
+            ? `<p class="cv-result-file">${escapeHtml(match.path)}</p>`
+            : "";
+          snippet = `${fileLabel}<p class="cv-result-snippet">${raw}</p>`;
+        }
+
+        const badge =
+          r.matchCount > 0
+            ? `<span class="cv-result-badge">${r.matchCount} match${r.matchCount !== 1 ? "es" : ""}</span>`
+            : "";
+
+        const stateChip = r.enabled
+          ? ""
+          : `<span class="cv-skill-state">disabled</span>`;
+
+        // Skills have no per-skill page to open, so cards are static.
+        return `
+          <div class="cv-result cv-result--skill"
+               role="listitem"
+               title="${escapeHtml(r.name)}">
+            <div class="cv-result-meta">
+              <span class="cv-result-title">${escapeHtml(r.name)}${stateChip}</span>
+              <span class="cv-result-date">${date}</span>
+            </div>
+            ${badge}
+            ${snippet}
+          </div>
+        `;
+      })
+      .join("");
+
+    const doc = new DOMParser().parseFromString(
+      `<div>${html}</div>`,
+      "text/html",
+    );
+    container.replaceChildren(...doc.body.firstChild.childNodes);
+  }
+
   // ---------------------------------------------------------------------------
   // State screens
   // ---------------------------------------------------------------------------
 
   function showState(state, data = {}) {
     const container = document.getElementById("converse-results");
+    const key =
+      state === "initial" && currentMode === "skills" ? "initial-skills" : state;
 
     const templates = {
       initial: `
@@ -599,6 +760,38 @@
           </div>
         </div>`,
 
+      "initial-skills": `
+        <div class="cv-empty">
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <p>Search inside all your skills.</p>
+          <div class="cv-feature-tiles">
+            <div class="cv-feature-tile">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <span>Skill file content search</span>
+            </div>
+            <div class="cv-feature-tile">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Downloaded once, cached locally</span>
+            </div>
+          </div>
+        </div>`,
+
       loading: `<div class="cv-spinner" role="status" aria-label="Searching"></div>`,
 
       "no-results": `
@@ -625,7 +818,7 @@
     };
 
     const parsed = new DOMParser().parseFromString(
-      `<div>${templates[state] ?? templates.initial}</div>`,
+      `<div>${templates[key] ?? templates.initial}</div>`,
       "text/html",
     );
     container.replaceChildren(...parsed.body.firstChild.childNodes);
@@ -732,6 +925,119 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Skills sync
+  // ---------------------------------------------------------------------------
+
+  async function syncSkills() {
+    if (isSkillsSyncing) return;
+
+    const orgId = getOrgId();
+    if (!orgId) {
+      showState("error", {
+        title: "Not signed in",
+        body: "Sign in to Claude, then try again.",
+      });
+      return;
+    }
+
+    isSkillsSyncing = true;
+    hasSkillsSyncedThisSession = true;
+
+    // The progress bar is shared with conversation sync — wait for it to free up.
+    while (isSyncing) await sleep(400);
+
+    const toggle = document.getElementById("converse-toggle");
+    const syncBtn = document.getElementById("converse-sync-btn");
+    const progress = document.getElementById("converse-progress");
+    const fill = document.getElementById("converse-progress-fill");
+    const label = document.getElementById("converse-progress-label");
+
+    toggle.classList.add("cv-toggle--syncing");
+    syncBtn.classList.add("cv-icon-btn--spinning");
+    syncBtn.disabled = true;
+    progress.hidden = false;
+
+    try {
+      label.textContent = "Fetching skills list…";
+      fill.style.width = "5%";
+
+      const data = await fetchWithRetry(
+        `https://claude.ai/api/organizations/${orgId}/skills/list-skills`,
+      );
+      const skills = data.skills ?? [];
+
+      const existing = await window.converseStorage.getSkillTimestamps();
+      const liveIds = new Set(skills.map((s) => s.id));
+      const stale = Object.keys(existing).filter((id) => !liveIds.has(id));
+      const toFetch = skills.filter((s) => existing[s.id] !== s.updated_at);
+
+      if (toFetch.length === 0 && stale.length === 0) {
+        label.textContent = "Skills are up to date.";
+        fill.style.width = "100%";
+        await sleep(1200);
+      } else {
+        const fetched = [];
+        let done = 0;
+
+        for (let i = 0; i < toFetch.length; i += CONFIG.skillBatchSize) {
+          const batch = toFetch.slice(i, i + CONFIG.skillBatchSize);
+
+          await Promise.all(
+            batch.map(async (skill) => {
+              const files = await downloadSkillFiles(orgId, skill.id);
+              fetched.push({ ...skill, files });
+              done += 1;
+              fill.style.width = `${Math.round((done / toFetch.length) * 95) + 5}%`;
+              label.textContent = `Downloading skill ${done} of ${toFetch.length}…`;
+            }),
+          );
+        }
+
+        await window.converseStorage.deleteSkills(stale);
+        // Single batched write so the cache flips over all at once.
+        await window.converseStorage.saveSkills(fetched);
+      }
+
+      await window.converseStorage.setMetadata(
+        "lastSkillsSyncTime",
+        new Date().toISOString(),
+      );
+      label.textContent = "Skills sync complete.";
+      fill.style.width = "100%";
+      await sleep(1400);
+    } catch (err) {
+      console.error("[Converse] Skills sync error:", err);
+      label.textContent = `Skills sync failed: ${err.message}`;
+      await sleep(2200);
+    } finally {
+      isSkillsSyncing = false;
+      toggle.classList.remove("cv-toggle--syncing");
+      syncBtn.classList.remove("cv-icon-btn--spinning");
+      syncBtn.disabled = false;
+      progress.hidden = true;
+      fill.style.width = "0%";
+      refreshFooter(true);
+      // The first search of the session may have run against an empty cache.
+      if (currentMode === "skills" && currentQuery.trim()) runSearch(currentQuery);
+    }
+  }
+
+  async function downloadSkillFiles(orgId, skillId) {
+    try {
+      const buffer = await fetchWithRetry(
+        `https://claude.ai/api/organizations/${orgId}/skills/download-dot-skill-file?skill_id=${encodeURIComponent(skillId)}&include_blocked=true`,
+        { as: "buffer" },
+      );
+      return await window.converseSkills.extractFromResponse(buffer);
+    } catch (err) {
+      // Some provisioned skills have no downloadable archive — index their
+      // name and description anyway.
+      console.warn(`[Converse] Skill ${skillId} archive skipped:`, err);
+      return [];
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Footer
   // ---------------------------------------------------------------------------
 
@@ -740,39 +1046,42 @@
     const lastSyncEl = document.getElementById("converse-last-sync");
     const sizeEl = document.getElementById("converse-storage-size");
 
-    // Serve from cache on every open — only re-read after a sync or clear.
-    if (footerCache && !bustCache) {
-      countEl.textContent = footerCache.count;
-      lastSyncEl.textContent = footerCache.lastSync;
-      sizeEl.textContent = footerCache.size;
-      return;
+    // Serve from cache on every open and mode switch — only re-read after a
+    // sync or clear. Both modes' figures are cached together.
+    if (!footerCache || bustCache) {
+      try {
+        const [chatCount, skillCount, chatSync, skillSync, bytes] =
+          await Promise.all([
+            window.converseStorage.getConversationCount(),
+            window.converseStorage.getSkillCount(),
+            window.converseStorage.getMetadata("lastSyncTime"),
+            window.converseStorage.getMetadata("lastSkillsSyncTime"),
+            window.converseStorage.getStorageSize(),
+          ]);
+
+        const syncText = (iso) =>
+          iso
+            ? `synced ${new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+            : "never synced";
+
+        footerCache = {
+          chats: { count: `${chatCount} indexed`, lastSync: syncText(chatSync) },
+          skills: {
+            count: `${skillCount} skills indexed`,
+            lastSync: syncText(skillSync),
+          },
+          size: formatBytes(bytes),
+        };
+      } catch {
+        countEl.textContent = "—";
+        return;
+      }
     }
 
-    try {
-      const [count, lastSync, bytes] = await Promise.all([
-        window.converseStorage.getConversationCount(),
-        window.converseStorage.getMetadata("lastSyncTime"),
-        window.converseStorage.getStorageSize(),
-      ]);
-
-      const countText = `${count} indexed`;
-      const lastSyncText = lastSync
-        ? `synced ${new Date(lastSync).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-        : "never synced";
-      const sizeText = formatBytes(bytes);
-
-      footerCache = {
-        count: countText,
-        lastSync: lastSyncText,
-        size: sizeText,
-      };
-
-      countEl.textContent = countText;
-      lastSyncEl.textContent = lastSyncText;
-      sizeEl.textContent = sizeText;
-    } catch {
-      countEl.textContent = "—";
-    }
+    const view = currentMode === "skills" ? footerCache.skills : footerCache.chats;
+    countEl.textContent = view.count;
+    lastSyncEl.textContent = view.lastSync;
+    sizeEl.textContent = footerCache.size;
   }
 
   function formatBytes(n) {

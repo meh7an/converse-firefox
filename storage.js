@@ -3,14 +3,25 @@
 // Exposed as window.converseStorage for consumption by content.js.
 
 const DB_NAME = "ConverseSearch";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_CONVERSATIONS = "conversations";
+const STORE_SKILLS = "skills";
 const STORE_METADATA = "metadata";
+
+class BlockedUpgradeError extends Error {
+  constructor() {
+    super("Database upgrade blocked by another tab");
+    this.name = "BlockedUpgradeError";
+  }
+}
 
 class ConversationStorage {
   constructor() {
     this._db = null;
     this._ready = this._open();
+    // Callers surface the failure themselves; this only marks the shared
+    // promise handled so a rejection is not reported as uncaught.
+    this._ready.catch(() => {});
   }
 
   // -------------------------------------------------------------------------
@@ -23,8 +34,18 @@ class ConversationStorage {
 
       req.onerror = () => reject(req.error);
 
+      // Fires when another connection still holds an older version. Without
+      // this handler neither onsuccess nor onerror ever fires and every
+      // _ensureReady() caller waits forever.
+      req.onblocked = () => reject(new BlockedUpgradeError());
+
       req.onsuccess = () => {
         this._db = req.result;
+        // Let a newer version in another tab upgrade instead of blocking it.
+        this._db.onversionchange = () => {
+          this._db.close();
+          this._db = null;
+        };
         resolve();
       };
 
@@ -38,6 +59,10 @@ class ConversationStorage {
           store.createIndex("name", "name", { unique: false });
           // Denormalised full-text field — rebuilt on every write.
           store.createIndex("searchText", "searchText", { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains(STORE_SKILLS)) {
+          db.createObjectStore(STORE_SKILLS, { keyPath: "id" });
         }
 
         if (!db.objectStoreNames.contains(STORE_METADATA)) {
@@ -91,6 +116,34 @@ class ConversationStorage {
         req.onsuccess = () => {
           remaining -= 1;
           if (remaining === 0) resolve(conversations.length);
+        };
+        req.onerror = () => reject(req.error);
+      }
+    });
+  }
+
+  // Writes the full batch in a single transaction so the cache flips at once.
+  async saveSkills(skills) {
+    await this._ensureReady();
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction([STORE_SKILLS], "readwrite");
+      const store = tx.objectStore(STORE_SKILLS);
+      let remaining = skills.length;
+
+      if (remaining === 0) {
+        resolve(0);
+        return;
+      }
+
+      for (const skill of skills) {
+        const req = store.put({
+          ...skill,
+          searchText: this._buildSkillSearchText(skill),
+          cachedAt: new Date().toISOString(),
+        });
+        req.onsuccess = () => {
+          remaining -= 1;
+          if (remaining === 0) resolve(skills.length);
         };
         req.onerror = () => reject(req.error);
       }
@@ -159,6 +212,36 @@ class ConversationStorage {
     });
   }
 
+  async getAllSkills() {
+    await this._ensureReady();
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction([STORE_SKILLS], "readonly");
+      const req = tx.objectStore(STORE_SKILLS).getAll();
+      req.onsuccess = () => resolve(req.result ?? []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // Returns { [id]: updated_at } — used for incremental skills sync diffing.
+  async getSkillTimestamps() {
+    const skills = await this.getAllSkills();
+    const map = {};
+    for (const skill of skills) {
+      map[skill.id] = skill.updated_at;
+    }
+    return map;
+  }
+
+  async getSkillCount() {
+    await this._ensureReady();
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction([STORE_SKILLS], "readonly");
+      const req = tx.objectStore(STORE_SKILLS).count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   async getMetadata(key) {
     await this._ensureReady();
     return new Promise((resolve, reject) => {
@@ -209,6 +292,33 @@ class ConversationStorage {
     return this._sorted(results, sortBy).slice(0, limit);
   }
 
+  async searchSkills(query, options = {}) {
+    const { limit = 50, sortBy = "relevance" } = options;
+    const terms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 0);
+
+    if (terms.length === 0) return [];
+
+    const skills = await this.getAllSkills();
+    const results = [];
+
+    for (const skill of skills) {
+      const text = skill.searchText ?? "";
+      if (!terms.every((t) => text.includes(t))) continue;
+
+      const matchingFiles = this._matchingSkillFiles(skill, terms);
+      results.push({
+        id: skill.id,
+        name: skill.name || "Untitled",
+        enabled: skill.enabled !== false,
+        updated_at: skill.updated_at,
+        matchingFiles,
+        matchCount: matchingFiles.length,
+      });
+    }
+
+    return this._sorted(results, sortBy).slice(0, limit);
+  }
+
   // -------------------------------------------------------------------------
   // Mutation
   // -------------------------------------------------------------------------
@@ -223,11 +333,27 @@ class ConversationStorage {
     });
   }
 
+  async deleteSkills(ids) {
+    await this._ensureReady();
+    if (ids.length === 0) return true;
+    return new Promise((resolve, reject) => {
+      const tx = this._db.transaction([STORE_SKILLS], "readwrite");
+      const store = tx.objectStore(STORE_SKILLS);
+      for (const id of ids) store.delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   async clearAll() {
     await this._ensureReady();
     return new Promise((resolve, reject) => {
-      const tx = this._db.transaction([STORE_CONVERSATIONS, STORE_METADATA], "readwrite");
+      const tx = this._db.transaction(
+        [STORE_CONVERSATIONS, STORE_SKILLS, STORE_METADATA],
+        "readwrite",
+      );
       tx.objectStore(STORE_CONVERSATIONS).clear();
+      tx.objectStore(STORE_SKILLS).clear();
       tx.objectStore(STORE_METADATA).clear();
       tx.oncomplete = () => resolve(true);
       tx.onerror = () => reject(tx.error);
@@ -259,6 +385,56 @@ class ConversationStorage {
     }
 
     return parts.join(" ").toLowerCase();
+  }
+
+  _buildSkillSearchText(skill) {
+    const parts = [];
+
+    if (skill.name) parts.push(skill.name);
+    if (skill.description) parts.push(skill.description);
+
+    for (const file of skill.files ?? []) {
+      if (file.path) parts.push(file.path);
+      if (file.text) parts.push(file.text);
+    }
+
+    return parts.join(" ").toLowerCase();
+  }
+
+  _matchingSkillFiles(skill, terms) {
+    const matches = [];
+
+    // The description is treated as one more searchable surface next to the
+    // archive files so its matches surface with a labelled snippet too.
+    const surfaces = [
+      { path: "description", text: skill.description ?? "" },
+      ...(skill.files ?? []),
+    ];
+
+    for (const surface of surfaces) {
+      const text = surface.text ?? "";
+      if (!text.trim()) continue;
+
+      const lower = text.toLowerCase();
+      if (!terms.some((t) => lower.includes(t) || surface.path.toLowerCase().includes(t)))
+        continue;
+
+      matches.push({
+        path: surface.path,
+        snippet: this._snippet(text, terms),
+      });
+    }
+
+    // Mirrors _matchingMessages: a name-only match still yields one entry so
+    // matchCount is never 0 for a result that passed the full-text filter.
+    if (matches.length === 0 && skill.name) {
+      const nameLower = skill.name.toLowerCase();
+      if (terms.some((t) => nameLower.includes(t))) {
+        matches.push({ path: null, snippet: skill.name });
+      }
+    }
+
+    return matches;
   }
 
   _matchingMessages(conversation, terms) {
